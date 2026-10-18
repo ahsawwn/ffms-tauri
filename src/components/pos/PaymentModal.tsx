@@ -42,17 +42,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
         const st = styleMap[r.qrStyle ?? 'classic'] ?? styleMap.classic;
         import('sendkardo-qr').then(async (m: any) => {
           try {
-            // Validate IBAN first
-            if (!m.isValidPakistaniIban(r.iban)) {
-              console.error('Invalid IBAN:', r.iban);
+            const ibanNorm = m.normalizePakistaniIban(r.iban);
+            if (!m.isValidPakistaniIban(ibanNorm)) {
+              console.error('Invalid IBAN:', r.iban, '->', ibanNorm);
               setRaastQrUrl('INVALID');
               return;
             }
-            const url = await m.createRaastQrDataUrl({ iban: r.iban, amount: total }, { errorCorrectionLevel: st.level, margin: 1, width: 220, color: { dark: st.dark, light: st.light } });
+            if (total <= 0) {
+              console.error('Amount must be > 0');
+              setRaastQrUrl('INVALID');
+              return;
+            }
+            const url = await m.createRaastQrDataUrl({ iban: ibanNorm, amount: total.toFixed(2) }, { errorCorrectionLevel: st.level, margin: 1, width: 220, color: { dark: st.dark, light: st.light } });
             setRaastQrUrl(url);
             broadcastCustomerDisplay({ status: 'payment', total, restaurantName: settings?.restaurantName, raast: r, raastQrDataUrl: url });
-          } catch (e) { console.error('raast qr gen failed', e); setRaastQrUrl('ERROR'); }
-        }).catch((e) => { console.error('sendkardo import failed', e); setRaastQrUrl('ERROR'); });
+          } catch (e: any) { console.error('raast qr gen failed', e?.code, e?.message, e); setRaastQrUrl('ERROR:' + (e?.code ?? e?.message ?? '')); }
+        }).catch((e) => { console.error('sendkardo import failed', e); setRaastQrUrl('ERROR:import'); });
       } else {
         setRaastQrUrl('');
       }
@@ -73,9 +78,14 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
     if (!qrImg && iban && accountTitle) {
       try {
         const m = (await import('sendkardo-qr')) as any;
-        qrImg = await m.createRaastQrDataUrl({ iban, amount: total }, { width: 220, margin: 1 });
+        const ibanNorm = m.normalizePakistaniIban(iban);
+        qrImg = await m.createRaastQrDataUrl({ iban: ibanNorm, amount: total.toFixed(2) }, { width: 220, margin: 1 });
         setRaastQrUrl(qrImg);
-      } catch (e) { console.error('raast qr gen failed', e); }
+      } catch (e: any) { console.error('raast qr gen failed', e); alert('QR generation failed: ' + (e?.code ?? e?.message ?? e)); return; }
+    }
+    if (!qrImg || qrImg.startsWith('INVALID') || qrImg.startsWith('ERROR')) {
+      alert('No valid QR to print. Check IBAN in Settings.');
+      return;
     }
     const html = '<html><head><style>'
       + '@page { size: 80mm auto; margin: 0mm; }'
@@ -114,10 +124,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
             {iban && accountTitle ? (
               <>
                 <div className="brutal-card p-3 bg-[#F4F0EA] flex flex-col items-center gap-2 border-3 border-black">
-                  {raastQrUrl === 'INVALID' ? (
-                    <p className="text-xs font-bold text-[#FF6B8B]">Invalid IBAN. Check Settings.</p>
-                  ) : raastQrUrl === 'ERROR' ? (
-                    <p className="text-xs font-bold text-[#FF6B8B]">QR generation failed.</p>
+                  {raastQrUrl.startsWith('INVALID') ? (
+                    <p className="text-xs font-bold text-[#FF6B8B]">Invalid IBAN or amount. Check Settings.</p>
+                  ) : raastQrUrl.startsWith('ERROR') ? (
+                    <p className="text-xs font-bold text-[#FF6B8B]">{raastQrUrl}</p>
                   ) : raastQrUrl ? (
                     <img src={raastQrUrl} alt="raast qr" className="w-52 h-52" />
                   ) : (

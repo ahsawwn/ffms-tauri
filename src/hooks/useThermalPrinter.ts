@@ -161,20 +161,8 @@ export function useThermalPrinter() {
 
   const printWindow = useCallback(function (html: string) {
     const styled = ensureStyled(html);
-    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
-    const printerName = (typeof localStorage !== 'undefined' ? localStorage.getItem('nerve_printer_name') : '') || '';
-
-    // Tauri native print (no dialog) when a printer is configured — two-pass to avoid extra paper.
-    if (isTauri && printerName) {
-      import('@tauri-apps/api/core').then(function (m) {
-        m.invoke('print_html', { html: styled, printer: printerName }).then(function (r: any) {
-          console.log('print result', r);
-        }).catch(function (e) { console.error('native print failed, falling back', e); browserPrint(styled); });
-      }).catch(function () { browserPrint(styled); });
-      return;
-    }
-
-    // Browser print dialog fallback.
+    // Browser print dialog: respects @page auto height (no extra paper) and correct zoom.
+    // Native printing caused zoomed-out/lengthy output; use browser print as primary.
     browserPrint(styled);
   }, []);
 
