@@ -1,0 +1,129 @@
+import React, { useEffect, useState } from 'react';
+import { fetchReceiptSettings, saveReceiptSettings } from '../db/userQueries';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { QRCodeSVG } from 'qrcode.react';
+import { useThermalPrinter } from '../hooks/useThermalPrinter';
+import { ThemeSection } from './settings/ThemeSection';
+import { RaastSection } from './settings/RaastSection';
+import type { ThemeId } from './settings/ThemeSection';
+
+export const SettingsView: React.FC = () => {
+  const [s, setS] = useState<any>({});
+  const [theme, setTheme] = useState<ThemeId>('default');
+  const [saving, setSaving] = useState(false);
+  const { printTest } = useThermalPrinter();
+
+  useEffect(() => {
+    const stored = localStorage.getItem('nerve_theme');
+    if (stored) setTheme(stored as ThemeId);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('nerve_theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (!isTauri) {
+      const stored = localStorage.getItem('nerve_raast');
+      setS({
+        kitchenPin: localStorage.getItem('kitchen_pin') ?? '1234',
+        mobileKitchenUrl: localStorage.getItem('kitchen_url') ?? '',
+        raast: stored ? JSON.parse(stored) : { accountTitle: '', iban: '', till: '', amount: '' },
+      });
+      return;
+    }
+    void fetchReceiptSettings().then((r) => {
+      const raast = r?.raast ? JSON.parse(r.raast) : { accountTitle: '', iban: '', till: '', amount: '' };
+      setS({ ...(r ?? {}), raast });
+    });
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    const toSave = { ...s, raast: JSON.stringify(s.raast) };
+    if (!isTauri) {
+      localStorage.setItem('kitchen_pin', s.kitchenPin ?? '1234');
+      localStorage.setItem('kitchen_url', s.mobileKitchenUrl ?? '');
+      localStorage.setItem('nerve_raast', JSON.stringify(s.raast));
+      setSaving(false);
+      alert('Saved');
+      return;
+    }
+    await saveReceiptSettings(toSave);
+    setSaving(false);
+    alert('Saved');
+  };
+
+  const url = s.mobileKitchenUrl || `${window.location.origin}/#/kitchen/mobile`;
+
+  return (
+    <div className="h-screen bg-[var(--bg-app)] overflow-y-auto p-4">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col gap-6">
+          {/* Header */}
+          <div className="brutal-card p-4 bg-[#FFE600] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-white border-3 border-black shadow-[3px_3px_0px_#000]">⚙️</div>
+              <div>
+                <h2 className="font-black uppercase text-xl">Settings</h2>
+                <p className="text-xs font-extrabold uppercase text-black/70">Nerve FFMS Terminal</p>
+              </div>
+            </div>
+            <Button variant="success" className="flex-shrink-0" onClick={save} disabled={saving}>
+              {saving ? 'SAVING...' : 'Save Settings'}
+            </Button>
+          </div>
+
+          {/* Receipt */}
+          <div className="brutal-card p-4 bg-white flex flex-col gap-3">
+            <h3 className="font-black uppercase text-sm border-b-3 border-black pb-1">Receipt Details</h3>
+            <Input label="Restaurant Name" value={s.restaurantName ?? ''} onChange={(e) => setS({ ...s, restaurantName: e.target.value })} />
+            <Input label="Tagline" value={s.tagline ?? ''} onChange={(e) => setS({ ...s, tagline: e.target.value })} />
+            <Input label="Address" value={s.address ?? ''} onChange={(e) => setS({ ...s, address: e.target.value })} />
+            <Input label="Phone" value={s.phone ?? ''} onChange={(e) => setS({ ...s, phone: e.target.value })} />
+            <Input label="Tax Reg No (TRN)" value={s.taxRegistrationNumber ?? ''} onChange={(e) => setS({ ...s, taxRegistrationNumber: e.target.value })} />
+            <Input label="Footer Message" value={s.footerMessage ?? ''} onChange={(e) => setS({ ...s, footerMessage: e.target.value })} />
+          </div>
+
+          {/* Printer */}
+          <div className="brutal-card p-4 bg-white flex flex-col gap-3">
+            <h3 className="font-black uppercase text-sm border-b-3 border-black pb-1">Printer</h3>
+            <select className="brutal-input" value={s.printerWidth ?? '80mm'} onChange={(e) => setS({ ...s, printerWidth: e.target.value })}>
+              <option value="80mm">80mm Thermal</option>
+              <option value="58mm">58mm Thermal</option>
+            </select>
+            <label className="flex items-center gap-2 text-xs font-bold">
+              <input type="checkbox" checked={!!s.showLogo} onChange={(e) => setS({ ...s, showLogo: e.target.checked ? 1 : 0 })} /> Show Logo
+            </label>
+            <Button variant="info" size="sm" onClick={() => printTest(s)}>Test Print Receipt</Button>
+          </div>
+
+          {/* Kitchen / Mobile */}
+          <div className="brutal-card p-4 bg-white flex flex-col gap-3">
+            <h3 className="font-black uppercase text-sm border-b-3 border-black pb-1">Kitchen & Mobile</h3>
+            <Input label="Kitchen PIN (4 digits)" value={s.kitchenPin ?? ''} maxLength={4} onChange={(e) => setS({ ...s, kitchenPin: e.target.value })} />
+            <Input label="Mobile Kitchen URL" value={s.mobileKitchenUrl ?? ''} placeholder="http://192.168.x.x:1420/#/kitchen/mobile" onChange={(e) => setS({ ...s, mobileKitchenUrl: e.target.value })} />
+            <div className="brutal-card p-3 bg-[#F4F0EA] flex flex-col items-center gap-2 border-3 border-black">
+              <h4 className="font-black uppercase text-xs">Mobile Kitchen QR</h4>
+              <QRCodeSVG value={url} size={160} />
+              <span className="text-[10px] font-bold break-all text-center">{url}</span>
+            </div>
+          </div>
+
+          {/* Themes */}
+          <ThemeSection theme={theme} onThemeChange={setTheme} />
+
+          {/* Raast Payments */}
+          <RaastSection
+            raast={s.raast ?? { accountTitle: '', iban: '', till: '', amount: '' }}
+            onRaastChange={(raast) => setS({ ...s, raast })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
