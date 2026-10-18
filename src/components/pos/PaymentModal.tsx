@@ -89,8 +89,8 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
     }
     const html = '<html><head><style>'
       + '@page { margin: 0mm; }'
-      + 'body{font-family:monospace;text-align:center;padding:10px;margin:0;orphans:0;widows:0;}'
-      + 'img{width:200px;height:200px;margin:10px auto;display:block;}'
+      + 'body{font-family:monospace;text-align:center;padding:4px;margin:0;orphans:0;widows:0;}'
+      + 'img{width:180px;height:180px;margin:8px auto;display:block;}'
       + '</style></head><body>'
       + '<h2>Raast Payment</h2>'
       + '<p><strong>' + accountTitle + '</strong></p>'
