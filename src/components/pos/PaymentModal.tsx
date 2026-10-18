@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
-import { QRCodeSVG } from 'qrcode.react';
 import { broadcastCustomerDisplay } from '../../utils/customerDisplay';
 
 export interface PaymentModalProps {
@@ -12,18 +11,11 @@ export interface PaymentModalProps {
   onConfirm: (method: 'CASH' | 'CARD' | 'ONLINE' | 'RAAST', cashReceived: number) => void;
 }
 
-const QR_STYLES: Record<string, { fg: string; bg: string; level: 'L' | 'M' | 'Q' | 'H' }> = {
-  classic: { fg: '#000000', bg: '#FFFFFF', level: 'M' },
-  branded: { fg: '#000000', bg: '#FFE600', level: 'M' },
-  high: { fg: '#000000', bg: '#FFFFFF', level: 'H' },
-  mint: { fg: '#065F46', bg: '#D1FAE5', level: 'M' },
-  rose: { fg: '#9F1239', bg: '#FFE4E6', level: 'M' },
-};
-
 export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, settings, onClose, onConfirm }) => {
   const [method, setMethod] = useState<'CASH' | 'CARD' | 'ONLINE' | 'RAAST'>('CASH');
   const [cash, setCash] = useState<string>('');
   const [raastSettings, setRaastSettings] = useState<any>(null);
+  const [raastQrUrl, setRaastQrUrl] = useState<string>('');
 
   useEffect(() => {
     if (open) {
@@ -36,7 +28,26 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
         try { r = JSON.parse(localStorage.getItem('nerve_raast') ?? '{}'); } catch { r = null; }
       }
       setRaastSettings(r);
-      broadcastCustomerDisplay({ status: 'payment', total, restaurantName: settings?.restaurantName, raast: r, raastPayload: r?.iban ? 'RAAST\nIBAN: ' + r.iban + '\nTitle: ' + (r.accountTitle ?? '') + '\nAmount: ' + total.toFixed(2) : null });
+      // Generate Raast QR via sendkardo-qr
+      if (r?.iban && r?.accountTitle) {
+        const styleMap: Record<string, { dark: string; light: string; level: 'L' | 'M' | 'Q' | 'H' }> = {
+          classic: { dark: '#000000', light: '#FFFFFF', level: 'M' },
+          branded: { dark: '#000000', light: '#FFE600', level: 'M' },
+          high: { dark: '#000000', light: '#FFFFFF', level: 'H' },
+          mint: { dark: '#065F46', light: '#D1FAE5', level: 'M' },
+          rose: { dark: '#9F1239', light: '#FFE4E6', level: 'M' },
+        };
+        const st = styleMap[r.qrStyle ?? 'classic'] ?? styleMap.classic;
+        import('sendkardo-qr').then(async (m: any) => {
+          try {
+            const url = await m.createRaastQrDataUrl({ iban: r.iban, amount: total }, { errorCorrectionLevel: st.level, margin: 1, width: 220, color: { dark: st.dark, light: st.light } });
+            setRaastQrUrl(url);
+            broadcastCustomerDisplay({ status: 'payment', total, restaurantName: settings?.restaurantName, raast: r, raastQrDataUrl: url });
+          } catch (e) { console.error('raast qr gen failed', e); }
+        }).catch((e) => console.error('sendkardo import failed', e));
+      } else {
+        setRaastQrUrl('');
+      }
     } else {
       broadcastCustomerDisplay({ status: 'idle', items: [], total: 0, restaurantName: settings?.restaurantName });
     }
@@ -48,18 +59,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
 
   const iban = raastSettings?.iban ?? '';
   const accountTitle = raastSettings?.accountTitle ?? '';
-  const qrStyle = raastSettings?.qrStyle ?? 'classic';
-  const style = QR_STYLES[qrStyle] ?? QR_STYLES.classic;
-  const payload = `RAAST\nIBAN: ${iban}\nTitle: ${accountTitle}\nAmount: ${total.toFixed(2)}`;
 
   const handlePrintRaast = async () => {
     const w = window.open('', '_blank', 'width=360,height=480,noopener=yes');
     if (!w) return;
-    let qrImg = '';
-    try {
-      const QRCode = (await import('qrcode')) as any;
-      qrImg = await QRCode.toDataURL(payload, { width: 220, margin: 1 });
-    } catch (e) { console.error('raast qr gen failed', e); }
+    const qrImg = raastQrUrl || '';
     w.document.write('<html><head><style>body{font-family:monospace;text-align:center;padding:20px;} .qr{margin:20px auto;}</style></head><body>'
       + '<h2>Raast Payment</h2>'
       + '<p><strong>' + accountTitle + '</strong></p>'
@@ -95,14 +99,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
             {iban && accountTitle ? (
               <>
                 <div className="brutal-card p-3 bg-[#F4F0EA] flex flex-col items-center gap-2 border-3 border-black">
-                  <QRCodeSVG
-                    value={payload}
-                    size={200}
-                    bgColor={style.bg}
-                    fgColor={style.fg}
-                    level={style.level}
-                    includeMargin={true}
-                  />
+                  {raastQrUrl ? (
+                    <img src={raastQrUrl} alt="raast qr" className="w-52 h-52" />
+                  ) : (
+                    <p className="text-xs font-bold">Generating QR...</p>
+                  )}
                   <div className="text-xs font-bold text-center">
                     <div>{accountTitle}</div>
                     <div className="text-black/60">{iban}</div>

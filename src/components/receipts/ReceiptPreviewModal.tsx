@@ -20,9 +20,8 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({ open, 
     const printData = { ...data };
     if (data.settings?.raast?.raastOnReceipt && data.settings?.raast?.iban && data.settings?.raast?.accountTitle) {
       try {
-        const QRCode = (await import('qrcode')) as any;
-        const payload = 'RAAST\nIBAN: ' + data.settings.raast.iban + '\nTitle: ' + data.settings.raast.accountTitle + '\nAmount: ' + data.total.toFixed(2);
-        const qrUrl = await QRCode.toDataURL(payload, { width: 200, margin: 1 });
+        const m = (await import('sendkardo-qr')) as any;
+        const qrUrl = await m.createRaastQrDataUrl({ iban: data.settings.raast.iban, amount: data.total }, { width: 200, margin: 1 });
         printData.settings = { ...data.settings, raastQrDataUrl: qrUrl };
       } catch (e) { console.error('raast qr gen failed', e); }
     }

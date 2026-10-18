@@ -46,9 +46,8 @@ export const InvoicesView: React.FC = () => {
     const printSettings = { ...settings };
     if (settings?.raast?.raastOnReceipt && settings?.raast?.iban && settings?.raast?.accountTitle) {
       try {
-        const QRCode = (await import('qrcode')) as any;
-        const payload = 'RAAST\nIBAN: ' + settings.raast.iban + '\nTitle: ' + settings.raast.accountTitle + '\nAmount: ' + Number(o.totalAmount).toFixed(2);
-        printSettings.raastQrDataUrl = await QRCode.toDataURL(payload, { width: 200, margin: 1 });
+        const m = (await import('sendkardo-qr')) as any;
+        printSettings.raastQrDataUrl = await m.createRaastQrDataUrl({ iban: settings.raast.iban, amount: Number(o.totalAmount) }, { width: 200, margin: 1 });
       } catch (e) { console.error('raast qr gen failed', e); }
     }
     setReceipt({
