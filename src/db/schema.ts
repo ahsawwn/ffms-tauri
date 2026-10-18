@@ -38,6 +38,7 @@ export const receiptSettings = sqliteTable('receipt_settings', {
   mobileKitchenUrl: text('mobile_kitchen_url').default(''),
   raast: text('raast'),
   logoUrl: text('logo_url'),
+  printerName: text('printer_name'),
 });
 
 export const categories = sqliteTable('categories', {

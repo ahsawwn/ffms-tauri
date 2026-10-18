@@ -71,6 +71,7 @@ async function initializeTables(db: Database) {
     'ALTER TABLE receipt_settings ADD COLUMN mobile_kitchen_url TEXT DEFAULT "";',
     'ALTER TABLE receipt_settings ADD COLUMN raast TEXT;',
     'ALTER TABLE receipt_settings ADD COLUMN logo_url TEXT;',
+    'ALTER TABLE receipt_settings ADD COLUMN printer_name TEXT;',
   ];
   for (const sql of alters) { try { await db.execute(sql); } catch (e) {} }
   // Fix legacy rows where created_at was stored as the literal string 'CURRENT_TIMESTAMP'

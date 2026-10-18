@@ -21,15 +21,17 @@ function PRINT_CSS(width: string): string {
   return '<style>'
     + '@page { size: ' + width + ' auto; margin: 0mm; }'
     + '* { box-sizing: border-box; }'
-    + 'html, body { margin: 0; padding: 0; height: auto; overflow: hidden; }'
-    + 'body { font-family: monospace, monospace; font-size: 12px; line-height: 1.2; color: #000; padding: 4px 6px 2px 6px; }'
-    + '.receipt { width: ' + width + '; min-width: ' + width + '; max-width: ' + width + '; margin: 0 auto; page-break-after: avoid; page-break-inside: avoid; }'
+    + 'html, body { margin: 0; padding: 0; height: auto; overflow: hidden; orphans: 0; widows: 0; }'
+    + 'body { font-family: monospace, monospace; font-size: 12px; line-height: 1.2; color: #000; padding: 2px 4px 2px 4px; margin: 0; }'
+    + '.receipt { width: 100%; max-width: ' + width + '; margin: 0 auto; page-break-after: avoid; page-break-inside: avoid; }'
     + '.center { text-align: center; }'
+    + '.row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin: 1px 0; }'
+    + '.row > span:first-child { flex: 1 1 auto; min-width: 0; word-break: break-word; }'
+    + '.row > span:last-child { flex: 0 0 auto; text-align: right; white-space: nowrap; }'
     + '.bold { font-weight: 900; text-transform: uppercase; }'
     + '.dash { border-top: 1px dashed #000; margin: 4px 0; }'
-    + '.row { display: flex; justify-content: space-between; margin: 1px 0; }'
     + '.row.total { font-weight: 900; border-top: 1px dashed #000; padding-top: 3px; margin-top: 4px; }'
-    + '.cut { margin-top: 4px; text-align: center; font-size: 10px; }'
+    + '.cut { margin-top: 4px; text-align: center; font-size: 10px; page-break-after: avoid; }'
     + '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .no-print { display: none !important; } }'
     + '</style>';
 }
@@ -109,11 +111,10 @@ export function useThermalPrinter() {
     return '<html><head>' + PRINT_CSS('80mm') + '</head><body>' + html + '</body></html>';
   };
 
-  const printWindow = useCallback(function (html: string) {
-    const styled = ensureStyled(html);
+  const browserPrint = function (styled: string) {
     let win: Window | null = null;
     try {
-      win = window.open('', '_blank', 'width=360,height=640,noopener=yes');
+      win = window.open('', '_blank', 'width=320,height=320,noopener=yes');
     } catch (e) { win = null; }
 
     if (win) {
@@ -121,7 +122,7 @@ export function useThermalPrinter() {
         win.document.write(styled);
         win.document.close();
         win.focus();
-        setTimeout(function () { try { if (win) { win.focus(); win.print(); } } catch (e) { console.error('print failed', e); } }, 500);
+        setTimeout(function () { try { if (win) { win.focus(); win.print(); } } catch (e) { console.error('print failed', e); } }, 800);
         setTimeout(function () { try { if (win) win.close(); } catch (e) {} }, 1500);
       } catch (e) {
         console.error('print window write failed', e);
@@ -156,7 +157,25 @@ export function useThermalPrinter() {
         console.error('iframe print setup failed', e);
       }
     }
-    return win;
+  };
+
+  const printWindow = useCallback(function (html: string) {
+    const styled = ensureStyled(html);
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    const printerName = (typeof localStorage !== 'undefined' ? localStorage.getItem('nerve_printer_name') : '') || '';
+
+    // Tauri native print (no dialog) when a printer is configured.
+    if (isTauri && printerName) {
+      import('@tauri-apps/api/core').then(function (m) {
+        m.invoke('print_html', { html: styled, printer: printerName }).then(function (r: any) {
+          console.log('print result', r);
+        }).catch(function (e) { console.error('native print failed, falling back', e); browserPrint(styled); });
+      }).catch(function () { browserPrint(styled); });
+      return;
+    }
+
+    // Browser print dialog fallback.
+    browserPrint(styled);
   }, []);
 
   const buildEscPos = useCallback(function (data: any) {

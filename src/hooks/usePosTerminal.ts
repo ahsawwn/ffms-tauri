@@ -32,6 +32,7 @@ export function usePosTerminal() {
   const load = async () => {
     const [c, p, i, r, v, a, s] = await Promise.all([fetchCategories(), fetchProducts(), fetchInventory(), fetchRecipes(), fetchVariants(), fetchAddons(), fetchReceiptSettings()]);
     setCategories(c); setProducts(p); setInventory(i); setRecipes(r); setVariants(v); setAddons(a); setSettings(s);
+    if (s?.printerName) localStorage.setItem('nerve_printer_name', s.printerName);
   };
   useEffect(() => { void load(); }, []);
   useEffect(() => {

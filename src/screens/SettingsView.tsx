@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { fetchReceiptSettings, saveReceiptSettings } from '../db/userQueries';
+import { invoke } from '@tauri-apps/api/core';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { QRCodeSVG } from 'qrcode.react';
@@ -16,7 +17,14 @@ export const SettingsView: React.FC = () => {
   const [theme, setTheme] = useState<ThemeId>('default');
   const [tab, setTab] = useState<Tab>('Receipt');
   const [saving, setSaving] = useState(false);
+  const [printers, setPrinters] = useState<string[]>([]);
   const { printTest } = useThermalPrinter();
+
+  useEffect(() => {
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (!isTauri) return;
+    invoke<string[]>('list_printers').then(setPrinters).catch(() => setPrinters([]));
+  }, []);
 
   useEffect(() => {
     const stored = localStorage.getItem('nerve_theme');
@@ -42,6 +50,7 @@ export const SettingsView: React.FC = () => {
     void fetchReceiptSettings().then((r) => {
       const raast = r?.raast ? JSON.parse(r.raast) : { accountTitle: '', iban: '', till: '', amount: '' };
       setS({ ...(r ?? {}), raast });
+      if (r?.printerName) localStorage.setItem('nerve_printer_name', r.printerName);
     });
   }, []);
 
@@ -53,11 +62,13 @@ export const SettingsView: React.FC = () => {
       localStorage.setItem('kitchen_pin', s.kitchenPin ?? '1234');
       localStorage.setItem('kitchen_url', s.mobileKitchenUrl ?? '');
       localStorage.setItem('nerve_raast', JSON.stringify(s.raast));
+      localStorage.setItem('nerve_printer_name', s.printerName ?? '');
       setSaving(false);
       alert('Saved');
       return;
     }
     await saveReceiptSettings(toSave);
+    localStorage.setItem('nerve_printer_name', s.printerName ?? '');
     setSaving(false);
     alert('Saved');
   };
@@ -124,6 +135,14 @@ export const SettingsView: React.FC = () => {
                   <option value="80mm">80mm Thermal</option>
                   <option value="58mm">58mm Thermal</option>
                 </select>
+                {printers.length > 0 ? (
+                  <select className="brutal-input" value={s.printerName ?? ''} onChange={(e) => setS({ ...s, printerName: e.target.value })}>
+                    <option value="">Default printer (show dialog)</option>
+                    {printers.map((p) => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                ) : (
+                  <Input label="Printer Name (CUPS)" value={s.printerName ?? ''} onChange={(e) => setS({ ...s, printerName: e.target.value })} placeholder="e.g. POS-80" />
+                )}
                 <label className="flex items-center gap-2 text-xs font-bold">
                   <input type="checkbox" checked={!!s.showLogo} onChange={(e) => setS({ ...s, showLogo: e.target.checked ? 1 : 0 })} /> Show Logo
                 </label>
