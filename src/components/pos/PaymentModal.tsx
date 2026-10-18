@@ -40,11 +40,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
         const st = styleMap[r.qrStyle ?? 'classic'] ?? styleMap.classic;
         import('sendkardo-qr').then(async (m: any) => {
           try {
+            // Validate IBAN first
+            if (!m.isValidPakistaniIban(r.iban)) {
+              console.error('Invalid IBAN:', r.iban);
+              setRaastQrUrl('INVALID');
+              return;
+            }
             const url = await m.createRaastQrDataUrl({ iban: r.iban, amount: total }, { errorCorrectionLevel: st.level, margin: 1, width: 220, color: { dark: st.dark, light: st.light } });
             setRaastQrUrl(url);
             broadcastCustomerDisplay({ status: 'payment', total, restaurantName: settings?.restaurantName, raast: r, raastQrDataUrl: url });
-          } catch (e) { console.error('raast qr gen failed', e); }
-        }).catch((e) => console.error('sendkardo import failed', e));
+          } catch (e) { console.error('raast qr gen failed', e); setRaastQrUrl('ERROR'); }
+        }).catch((e) => { console.error('sendkardo import failed', e); setRaastQrUrl('ERROR'); });
       } else {
         setRaastQrUrl('');
       }
@@ -111,7 +117,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
             {iban && accountTitle ? (
               <>
                 <div className="brutal-card p-3 bg-[#F4F0EA] flex flex-col items-center gap-2 border-3 border-black">
-                  {raastQrUrl ? (
+                  {raastQrUrl === 'INVALID' ? (
+                    <p className="text-xs font-bold text-[#FF6B8B]">Invalid IBAN. Check Settings.</p>
+                  ) : raastQrUrl === 'ERROR' ? (
+                    <p className="text-xs font-bold text-[#FF6B8B]">QR generation failed.</p>
+                  ) : raastQrUrl ? (
                     <img src={raastQrUrl} alt="raast qr" className="w-52 h-52" />
                   ) : (
                     <p className="text-xs font-bold">Generating QR...</p>

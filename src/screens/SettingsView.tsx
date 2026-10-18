@@ -78,7 +78,7 @@ export const SettingsView: React.FC = () => {
     if (isTauri) {
       try {
         const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-        new WebviewWindow('customer-display', { url: '/index.html#/customer', title: 'Customer Display', width: 1024, height: 768 });
+        new WebviewWindow('customer-display', { url: 'index.html#/customer', title: 'Customer Display', width: 1024, height: 768 });
       } catch (e) { console.error('open customer display failed', e); window.open('/#/customer', '_blank'); }
     } else {
       window.open('/#/customer', '_blank');

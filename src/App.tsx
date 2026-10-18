@@ -72,6 +72,7 @@ function MainTerminalApp() {
           <Button variant={view === 'kitchen' ? 'primary' : 'outline'} size="sm" onClick={() => setView('kitchen')}>Kitchen</Button>
           <Button variant={view === 'tables' ? 'primary' : 'outline'} size="sm" onClick={() => setView('tables')}>Tables</Button>
           <Button variant={view === 'settings' ? 'primary' : 'outline'} size="sm" onClick={() => setView('settings')}>Settings</Button>
+          <Button variant="outline" size="sm" onClick={async () => { const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__; if (isTauri) { try { const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow'); new WebviewWindow('customer-display', { url: 'index.html#/customer', title: 'Customer Display', width: 900, height: 600 }); } catch (e) { window.open('/#/customer', '_blank'); } } else { window.open('/#/customer', '_blank'); } }}>Customer Display</Button>
           <Badge variant={user.role === 'OWNER' ? 'pink' : user.role === 'MANAGER' ? 'cyan' : 'lime'}>Role: {user.role}</Badge>
           <Button variant="danger" size="sm" onClick={logout}><LogOut className="w-4 h-4 stroke-[2.5]" /> LOCK</Button>
         </div>
