@@ -82,11 +82,10 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
     let pdf_path = dir.join("nerve_receipt.pdf");
     let pdf_path2 = dir.join("nerve_receipt2.pdf");
 
-    // First pass: tall page to measure content.
-    let html_tall = html.replace("size: 80mm auto;", "size: 80mm 297mm;");
+    // First pass: tall page to measure content. Inject size into @page (frontend sends margin-only).
+    let mut html_tall = html.replace("@page { margin: 0mm; }", "@page { size: 80mm 297mm; margin: 0mm; }");
     if html_tall == html {
-        // fallback: try replacing any size
-        let _ = ();
+        html_tall = html.replace("@page{margin:0mm;}", "@page{size:80mm 297mm;margin:0mm;}");
     }
     if let Err(e) = fs::write(&html_path, html_tall.as_bytes()) {
         return PrintResult { ok: false, message: format!("write html failed: {}", e) };
@@ -99,10 +98,10 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
     let h_mm = content_height_mm(&pdf_path).unwrap_or(297.0).min(297.0).max(20.0);
 
     // Second pass: exact height to avoid trailing blank paper.
-    let html_exact = html.replace("size: 80mm auto;", &format!("size: 80mm {}mm;", h_mm as i32));
-    let html_exact = if html_exact == html {
-        html.replace("80mm auto", &format!("80mm {}mm", h_mm as i32))
-    } else { html_exact };
+    let mut html_exact = html.replace("@page { margin: 0mm; }", &format!("@page {{ size: 80mm {}mm; margin: 0mm; }}", h_mm as i32));
+    if html_exact == html {
+        html_exact = html.replace("@page{margin:0mm;}", &format!("@page{{size:80mm {}mm;margin:0mm;}}", h_mm as i32));
+    }
     if let Err(e) = fs::write(&html_path, html_exact.as_bytes()) {
         return PrintResult { ok: false, message: format!("write html2 failed: {}", e) };
     }

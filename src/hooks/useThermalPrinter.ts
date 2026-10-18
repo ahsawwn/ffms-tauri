@@ -19,7 +19,7 @@ export interface ReceiptData {
 
 function PRINT_CSS(width: string): string {
   return '<style>'
-    + '@page { size: ' + width + ' auto; margin: 0mm; }'
+    + '@page { margin: 0mm; }'
     + '* { box-sizing: border-box; }'
     + 'html, body { margin: 0; padding: 0; height: auto; overflow: hidden; orphans: 0; widows: 0; }'
     + 'body { font-family: monospace, monospace; font-size: 12px; line-height: 1.2; color: #000; padding: 2px 4px 2px 4px; margin: 0; }'
@@ -161,8 +161,20 @@ export function useThermalPrinter() {
 
   const printWindow = useCallback(function (html: string) {
     const styled = ensureStyled(html);
-    // Browser print dialog: respects @page auto height (no extra paper) and correct zoom.
-    // Native printing caused zoomed-out/lengthy output; use browser print as primary.
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    const printerName = (typeof localStorage !== 'undefined' ? localStorage.getItem('nerve_printer_name') : '') || '';
+
+    // Tauri native print (no dialog) when a printer is configured — two-pass to avoid extra paper/zoom.
+    if (isTauri && printerName) {
+      import('@tauri-apps/api/core').then(function (m) {
+        m.invoke('print_html', { html: styled, printer: printerName }).then(function (r: any) {
+          console.log('print result', r);
+        }).catch(function (e) { console.error('native print failed, falling back', e); browserPrint(styled); });
+      }).catch(function () { browserPrint(styled); });
+      return;
+    }
+
+    // Browser print dialog fallback.
     browserPrint(styled);
   }, []);
 
