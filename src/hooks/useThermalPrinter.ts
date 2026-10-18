@@ -19,7 +19,7 @@ export interface ReceiptData {
 
 function PRINT_CSS(width: string): string {
   return '<style>'
-    + '@page { margin: 0mm; }'
+    + '@page { size: 80mm auto; margin: 0mm; }'
     + '* { box-sizing: border-box; }'
     + 'html, body { margin: 0; padding: 0; height: auto; overflow: hidden; orphans: 0; widows: 0; }'
     + 'body { font-family: "Courier New", Courier, monospace; font-size: 11px; line-height: 1.15; color: #000; padding: 1mm 2mm; margin: 0; }'

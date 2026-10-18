@@ -88,7 +88,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
       return;
     }
     const html = '<html><head><style>'
-      + '@page { margin: 0mm; }'
+      + '@page { size: 80mm auto; margin: 0mm; }'
       + 'body{font-family:monospace;text-align:center;padding:4px;margin:0;orphans:0;widows:0;}'
       + 'img{width:180px;height:180px;margin:8px auto;display:block;}'
       + '</style></head><body>'

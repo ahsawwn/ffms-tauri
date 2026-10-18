@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Button } from '../ui/Button';
 import { ThermalReceipt, ReceiptData } from './ThermalReceipt';
 import { KitchenTicket } from './KitchenTicket';
@@ -13,52 +13,47 @@ export interface ReceiptPreviewModalProps {
 export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({ open, data, onClose }) => {
   const ref = useRef<HTMLDivElement>(null);
   const kotRef = useRef<HTMLDivElement>(null);
-  const { printReceipt, printKot, renderReceiptHtml, renderKotHtml } = useThermalPrinter();
+  const { renderReceiptHtml, renderKotHtml, printHtml } = useThermalPrinter();
+  const [printing, setPrinting] = useState(false);
+
   if (!open || !data) return null;
 
   const handlePrint = async () => {
-    const printData = { ...data };
-    if (data.settings?.raast?.raastOnReceipt && data.settings?.raast?.iban && data.settings?.raast?.accountTitle) {
-      try {
-        const m = (await import('sendkardo-qr')) as any;
-        const qrUrl = await m.createRaastQrDataUrl({ iban: data.settings.raast.iban, amount: data.total }, { width: 200, margin: 1 });
-        printData.settings = { ...data.settings, raastQrDataUrl: qrUrl };
-      } catch (e) { console.error('raast qr gen failed', e); }
-    }
-    const styled = renderReceiptHtml(printData);
-    const win = window.open('', '_blank', 'width=360,height=640,noopener=yes');
-    if (win) {
-      try {
-        win.document.write(styled);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { try { win.focus(); win.print(); } catch (e) { console.error('print failed', e); } }, 500);
-        setTimeout(() => { try { win.close(); } catch (e) {} }, 1500);
-      } catch (e) {
-        console.error('receipt print write failed', e);
-        printReceipt(styled);
+    if (printing) return;
+    setPrinting(true);
+    try {
+      const printData = { ...data };
+      // Generate Raast QR if enabled
+      if (data.settings?.raast?.raastOnReceipt && data.settings?.raast?.iban && data.settings?.raast?.accountTitle) {
+        try {
+          const m = (await import('sendkardo-qr')) as any;
+          const ibanNorm = m.normalizePakistaniIban(data.settings.raast.iban);
+          if (m.isValidPakistaniIban(ibanNorm)) {
+            const qrUrl = await m.createRaastQrDataUrl(
+              { iban: ibanNorm, amount: data.total },
+              { width: 160, margin: 1 }
+            );
+            printData.settings = { ...data.settings, raastQrDataUrl: qrUrl };
+          }
+        } catch (e) {
+          console.error('raast qr gen failed', e);
+        }
       }
-    } else {
-      printReceipt(styled);
+      const html = renderReceiptHtml(printData);
+      printHtml(html);
+    } finally {
+      setPrinting(false);
     }
   };
 
   const handleKot = () => {
-    const styled = renderKotHtml(data);
-    const win = window.open('', '_blank', 'width=360,height=640,noopener=yes');
-    if (win) {
-      try {
-        win.document.write(styled);
-        win.document.close();
-        win.focus();
-        setTimeout(() => { try { win.focus(); win.print(); } catch (e) { console.error('kot print failed', e); } }, 500);
-        setTimeout(() => { try { win.close(); } catch (e) {} }, 1500);
-      } catch (e) {
-        console.error('kot print write failed', e);
-        printKot(styled);
-      }
-    } else {
-      printKot(styled);
+    if (printing) return;
+    setPrinting(true);
+    try {
+      const html = renderKotHtml(data);
+      printHtml(html);
+    } finally {
+      setPrinting(false);
     }
   };
 
@@ -70,14 +65,26 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({ open, 
           <ThermalReceipt {...data} />
         </div>
         <div className="hidden" ref={kotRef}>
-          <KitchenTicket orderNumber={data.orderNumber} orderType={data.orderType} tableNumber={data.tableNumber} customerName={data.customerName} items={data.items} />
+          <KitchenTicket
+            orderNumber={data.orderNumber}
+            orderType={data.orderType}
+            tableNumber={data.tableNumber}
+            customerName={data.customerName}
+            items={data.items}
+          />
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={onClose}>Close</Button>
-          <Button variant="info" className="flex-1" onClick={handleKot}>Print KOT</Button>
-          <Button variant="success" className="flex-1" onClick={handlePrint}>Print</Button>
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={printing}>
+            Close
+          </Button>
+          <Button variant="info" className="flex-1" onClick={handleKot} disabled={printing}>
+            Print KOT
+          </Button>
+          <Button variant="success" className="flex-1" onClick={handlePrint} disabled={printing}>
+            {printing ? 'Printing...' : 'Print'}
+          </Button>
         </div>
       </div>
     </div>
   );
-}
+};
