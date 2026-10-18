@@ -15,13 +15,36 @@ import { TableManagementView } from './screens/TableManagementView';
 import { InvoicesView } from './screens/InvoicesView';
 import { Button } from './components/ui/Button';
 import { Badge } from './components/ui/Badge';
-import { LogOut, ShieldCheck, ShoppingBag } from 'lucide-react';
+import { LogOut, ShieldCheck, ShoppingBag, Maximize, Minimize } from 'lucide-react';
 import './App.css';
 
 function MainTerminalApp() {
   const { user, logout, isLoading } = useAuth();
   const [view, setView] = useState<'pos' | 'inventory' | 'menu' | 'users' | 'deals' | 'invoices' | 'kitchen' | 'mobileKitchen' | 'tables' | 'settings'>('pos');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   useEffect(() => { if (window.location.hash === '#/kitchen/mobile') setView('mobileKitchen' as any); else if (window.location.hash === '#/kitchen') setView('kitchen'); }, []);
+  useEffect(() => {
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (!isTauri) return;
+    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+      getCurrentWindow().isFullscreen().then(setIsFullscreen).catch(() => {});
+    });
+  }, []);
+  const toggleFullscreen = async () => {
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (isTauri) {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const win = getCurrentWindow();
+        const fs = await win.isFullscreen();
+        await win.setFullscreen(!fs);
+        setIsFullscreen(!fs);
+      } catch (e) { console.error('fullscreen toggle failed', e); }
+    } else {
+      if (!document.fullscreenElement) { document.documentElement.requestFullscreen?.(); setIsFullscreen(true); }
+      else { document.exitFullscreen?.(); setIsFullscreen(false); }
+    }
+  };
 
   if (isLoading) {
     return (
@@ -72,6 +95,7 @@ function MainTerminalApp() {
           <Button variant={view === 'kitchen' ? 'primary' : 'outline'} size="sm" onClick={() => setView('kitchen')}>Kitchen</Button>
           <Button variant={view === 'tables' ? 'primary' : 'outline'} size="sm" onClick={() => setView('tables')}>Tables</Button>
           <Button variant={view === 'settings' ? 'primary' : 'outline'} size="sm" onClick={() => setView('settings')}>Settings</Button>
+          <Button variant="outline" size="sm" onClick={toggleFullscreen}>{isFullscreen ? <Minimize className="w-4 h-4 stroke-[2.5]" /> : <Maximize className="w-4 h-4 stroke-[2.5]" />} {isFullscreen ? 'Exit Full' : 'Full Screen'}</Button>
           <Button variant="outline" size="sm" onClick={async () => { const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__; if (isTauri) { try { const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow'); new WebviewWindow('customer-display', { url: 'index.html#/customer', title: 'Customer Display', width: 900, height: 600 }); } catch (e) { window.open('/#/customer', '_blank'); } } else { window.open('/#/customer', '_blank'); } }}>Customer Display</Button>
           <Badge variant={user.role === 'OWNER' ? 'pink' : user.role === 'MANAGER' ? 'cyan' : 'lime'}>Role: {user.role}</Badge>
           <Button variant="danger" size="sm" onClick={logout}><LogOut className="w-4 h-4 stroke-[2.5]" /> LOCK</Button>
