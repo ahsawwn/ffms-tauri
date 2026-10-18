@@ -10,6 +10,7 @@ import { MenuManagementView } from './screens/MenuManagementView';
 import { SettingsView } from './screens/SettingsView';
 import { KitchenView } from './screens/KitchenView';
 import { MobileKitchenView } from './screens/MobileKitchenView';
+import { CustomerDisplayView } from './screens/CustomerDisplayView';
 import { TableManagementView } from './screens/TableManagementView';
 import { InvoicesView } from './screens/InvoicesView';
 import { Button } from './components/ui/Button';
@@ -83,6 +84,9 @@ function MainTerminalApp() {
 export default function App() {
   if (typeof window !== 'undefined' && window.location.hash === '#/kitchen/mobile') {
     return <MobileKitchenView />;
+  }
+  if (typeof window !== 'undefined' && window.location.hash === '#/customer') {
+    return <CustomerDisplayView />;
   }
   return (
     <AuthProvider>

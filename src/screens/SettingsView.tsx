@@ -9,7 +9,7 @@ import { ThemeSection } from './settings/ThemeSection';
 import { RaastSection } from './settings/RaastSection';
 import type { ThemeId } from './settings/ThemeSection';
 
-const TABS = ['Receipt', 'Printer', 'Kitchen', 'Themes', 'Raast'] as const;
+const TABS = ['Receipt', 'Printer', 'Kitchen', 'Display', 'Themes', 'Raast'] as const;
 type Tab = typeof TABS[number];
 
 export const SettingsView: React.FC = () => {
@@ -71,6 +71,18 @@ export const SettingsView: React.FC = () => {
     localStorage.setItem('nerve_printer_name', s.printerName ?? '');
     setSaving(false);
     alert('Saved');
+  };
+
+  const openCustomerDisplay = async () => {
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (isTauri) {
+      try {
+        const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+        new WebviewWindow('customer-display', { url: '/index.html#/customer', title: 'Customer Display', width: 1024, height: 768 });
+      } catch (e) { console.error('open customer display failed', e); window.open('/#/customer', '_blank'); }
+    } else {
+      window.open('/#/customer', '_blank');
+    }
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,6 +184,15 @@ export const SettingsView: React.FC = () => {
                 <QRCodeSVG value={url} size={160} />
                 <span className="text-[10px] font-bold break-all text-center">{url}</span>
               </div>
+            </div>
+          )}
+
+          {tab === 'Display' && (
+            <div className="brutal-card p-4 bg-white flex flex-col gap-3">
+              <h3 className="font-black uppercase text-sm border-b-3 border-black pb-1">Customer Display</h3>
+              <p className="text-[10px] font-bold text-black/60 uppercase">Second screen showing the customer their order, total, and payment QR.</p>
+              <Button variant="info" onClick={openCustomerDisplay}>Open Customer Display Window</Button>
+              <p className="text-[10px] font-bold text-black/40 uppercase">In web mode, opens a new browser tab at #/customer. The display updates live as the cart changes.</p>
             </div>
           )}
 

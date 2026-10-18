@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { fetchCategories, fetchProducts, fetchInventory, fetchRecipes, fetchVariants, fetchAddons, submitOrder } from '../db/posQueries';
 import { fetchReceiptSettings } from '../db/userQueries';
+import { broadcastCustomerDisplay } from '../utils/customerDisplay';
 import { fetchTables, setTableStatus } from '../db/tableQueries';
 import type { CartItem, OrderMetadata } from '../types/pos';
 import type { products, inventoryItems, productRecipes } from '../db/schema';
@@ -42,6 +43,20 @@ export function usePosTerminal() {
       if (tbl && tbl.status === 'AVAILABLE') void setTableStatus(tbl.id, 'OCCUPIED');
     });
   }, [orderType, metadata.tableNumber, cart.length]);
+
+  // Broadcast current cart to customer display
+  useEffect(() => {
+    const items = cart.map((i: any) => ({ name: i.name + (i.variantName ? ' (' + i.variantName + ')' : ''), quantity: i.quantity, price: i.price }));
+    const subtotal = cart.reduce((s: number, i: any) => s + i.price * i.quantity, 0);
+    const tax = subtotal * taxRate;
+    const service = metadata.serviceCharge ? subtotal * 0.1 : 0;
+    const total = Math.max(0, subtotal + tax + service - discount);
+    if (cart.length === 0) {
+      broadcastCustomerDisplay({ status: 'idle', items: [], total: 0, restaurantName: settings?.restaurantName, logoUrl: settings?.logoUrl });
+    } else {
+      broadcastCustomerDisplay({ status: 'ordering', items, subtotal, tax, total, restaurantName: settings?.restaurantName, logoUrl: settings?.logoUrl });
+    }
+  }, [cart, taxRate, discount, metadata.serviceCharge, settings]);
   const available = (p: Product) => {
     const recs = recipes.filter((r) => r.productId === p.id && !r.variantId);
     if (recs.length === 0) return !!p.isAvailable && p.status === 'AVAILABLE';
@@ -117,6 +132,8 @@ export function usePosTerminal() {
     try { await fetch('/api/kitchen/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: { id: orderId, orderNumber: `ORD-${Date.now()}`, orderType, tableNumber: metadata.tableNumber, customerName: metadata.customerName, kitchenStatus: 'NEW', items: cart.map((i:any) => ({ name: i.name + (i.variantName ? ` (${i.variantName})` : ''), quantity: i.quantity })) } }) }); } catch (e) {}
     setCart([]);
     setPayOpen(false);
+    broadcastCustomerDisplay({ status: 'paid', items: [], total: 0, restaurantName: settings?.restaurantName });
+    setTimeout(() => broadcastCustomerDisplay({ status: 'idle', items: [], total: 0, restaurantName: settings?.restaurantName }), 4000);
     await load();
   };
   return {

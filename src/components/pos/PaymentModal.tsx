@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { QRCodeSVG } from 'qrcode.react';
+import { broadcastCustomerDisplay } from '../../utils/customerDisplay';
 
 export interface PaymentModalProps {
   open: boolean;
@@ -27,21 +28,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
   useEffect(() => {
     if (open) {
       const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+      let r: any = null;
       if (isTauri) {
-        setRaastSettings(settings?.raast ?? null);
+        r = settings?.raast;
+        if (typeof r === 'string') { try { r = JSON.parse(r); } catch { r = null; } }
       } else {
-        try { setRaastSettings(JSON.parse(localStorage.getItem('nerve_raast') ?? '{}')); } catch { setRaastSettings(null); }
+        try { r = JSON.parse(localStorage.getItem('nerve_raast') ?? '{}'); } catch { r = null; }
       }
+      setRaastSettings(r);
+      broadcastCustomerDisplay({ status: 'payment', total, restaurantName: settings?.restaurantName, raast: r, raastPayload: r?.iban ? 'RAAST\nIBAN: ' + r.iban + '\nTitle: ' + (r.accountTitle ?? '') + '\nAmount: ' + total.toFixed(2) : null });
+    } else {
+      broadcastCustomerDisplay({ status: 'idle', items: [], total: 0, restaurantName: settings?.restaurantName });
     }
-  }, [open, settings]);
+  }, [open, settings, total]);
 
   if (!open) return null;
   const received = Number(cash) || 0;
   const change = received - total;
 
-  const iban = raastSettings?.iban ?? settings?.raast?.iban ?? '';
-  const accountTitle = raastSettings?.accountTitle ?? settings?.raast?.accountTitle ?? '';
-  const qrStyle = raastSettings?.qrStyle ?? settings?.raast?.qrStyle ?? 'classic';
+  const iban = raastSettings?.iban ?? '';
+  const accountTitle = raastSettings?.accountTitle ?? '';
+  const qrStyle = raastSettings?.qrStyle ?? 'classic';
   const style = QR_STYLES[qrStyle] ?? QR_STYLES.classic;
   const payload = `RAAST\nIBAN: ${iban}\nTitle: ${accountTitle}\nAmount: ${total.toFixed(2)}`;
 
