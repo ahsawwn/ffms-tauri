@@ -95,7 +95,8 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
     }
 
     // Measure content height.
-    let h_mm = content_height_mm(&pdf_path).unwrap_or(297.0).min(297.0).max(20.0);
+    // Ensure portrait (height >= width) so thermal printer drivers don't auto-rotate to landscape.
+    let h_mm = content_height_mm(&pdf_path).unwrap_or(297.0).min(297.0).max(80.0);
 
     // Second pass: exact height to avoid trailing blank paper.
     let mut html_exact = html.replace("@page { margin: 0mm; }", &format!("@page {{ size: 80mm {}mm; margin: 0mm; }}", h_mm as i32));
