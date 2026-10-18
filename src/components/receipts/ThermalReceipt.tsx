@@ -21,7 +21,12 @@ export const ThermalReceipt: React.FC<ReceiptData> = ({ orderNumber, orderType, 
   const width = settings?.printerWidth === '58mm' ? '58mm' : '80mm';
   return (
     <div className="bg-white text-black font-mono mx-auto p-2" style={{ width }}>
-      {settings?.showLogo && <div className="text-center text-2xl font-black">{settings?.restaurantName ?? 'Nerve Fast Food'}</div>}
+      {settings?.showLogo && settings?.logoUrl && (
+        <div className="text-center mb-1">
+          <img src={settings.logoUrl} alt="logo" style={{ maxWidth: '60%', maxHeight: '60px', margin: '0 auto' }} />
+        </div>
+      )}
+      {settings?.showLogo && !settings?.logoUrl && <div className="text-center text-2xl font-black">{settings?.restaurantName ?? 'Nerve Fast Food'}</div>}
       <div className="text-center text-xs">{settings?.tagline}</div>
       <div className="text-center text-xs">{settings?.address}</div>
       <div className="text-center text-xs">Tel: {settings?.phone}</div>
@@ -30,6 +35,7 @@ export const ThermalReceipt: React.FC<ReceiptData> = ({ orderNumber, orderType, 
       <div className="text-xs">Order: {orderNumber}</div>
       <div className="text-xs">Type: {orderType}</div>
       <div className="text-xs">Cashier: {cashier}</div>
+      {settings?.showLogo && settings?.logoUrl && <div className="text-center text-2xl font-black mt-1">{settings?.restaurantName ?? 'Nerve Fast Food'}</div>}
       <div className="border-t border-dashed border-black my-1" />
       {items.map((it, idx) => (
         <div key={idx} className="text-xs flex justify-between">

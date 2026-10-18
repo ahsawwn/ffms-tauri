@@ -17,35 +17,40 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({ open, 
   if (!open || !data) return null;
 
   const handlePrint = () => {
-    // Render a dedicated print page (popup-blocker safe) instead of printing the preview innerHTML.
-    const printWin = window.open('', '_blank', 'width=360,height=640,noopener=yes');
-    if (printWin) {
+    const styled = renderReceiptHtml(data);
+    const win = window.open('', '_blank', 'width=360,height=640,noopener=yes');
+    if (win) {
       try {
-        printWin.document.write(renderReceiptHtml(data));
-        printWin.document.close();
-        printWin.focus();
+        win.document.write(styled);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { try { win.focus(); win.print(); } catch (e) { console.error('print failed', e); } }, 500);
+        setTimeout(() => { try { win.close(); } catch (e) {} }, 1500);
       } catch (e) {
         console.error('receipt print write failed', e);
-        printReceipt(ref.current?.innerHTML ?? '');
+        printReceipt(styled);
       }
     } else {
-      printReceipt(ref.current?.innerHTML ?? '');
+      printReceipt(styled);
     }
   };
 
   const handleKot = () => {
-    const printWin = window.open('', '_blank', 'width=360,height=640,noopener=yes');
-    if (printWin) {
+    const styled = renderKotHtml(data);
+    const win = window.open('', '_blank', 'width=360,height=640,noopener=yes');
+    if (win) {
       try {
-        printWin.document.write(renderKotHtml(data));
-        printWin.document.close();
-        printWin.focus();
+        win.document.write(styled);
+        win.document.close();
+        win.focus();
+        setTimeout(() => { try { win.focus(); win.print(); } catch (e) { console.error('kot print failed', e); } }, 500);
+        setTimeout(() => { try { win.close(); } catch (e) {} }, 1500);
       } catch (e) {
         console.error('kot print write failed', e);
-        printKot(kotRef.current?.innerHTML ?? '');
+        printKot(styled);
       }
     } else {
-      printKot(kotRef.current?.innerHTML ?? '');
+      printKot(styled);
     }
   };
 

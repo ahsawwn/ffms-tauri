@@ -1,4 +1,5 @@
 import { sqliteTable, text, real, integer } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
@@ -36,6 +37,7 @@ export const receiptSettings = sqliteTable('receipt_settings', {
   kitchenPin: text('kitchen_pin').default('1234'),
   mobileKitchenUrl: text('mobile_kitchen_url').default(''),
   raast: text('raast'),
+  logoUrl: text('logo_url'),
 });
 
 export const categories = sqliteTable('categories', {
@@ -118,7 +120,7 @@ export const kitchenHistory = sqliteTable('kitchen_history', {
   id: text('id').primaryKey(),
   orderId: text('order_id').notNull(),
   status: text('status').notNull(),
-  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const orders = sqliteTable('orders', {
@@ -135,7 +137,7 @@ export const orders = sqliteTable('orders', {
   paymentMethod: text('payment_method', { enum: ['CASH', 'CARD', 'ONLINE'] }),
   status: text('status').default('PENDING'),
   kitchenStatus: text('kitchen_status').default('NEW'),
-  createdAt: text('created_at').default('CURRENT_TIMESTAMP'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
 export const orderItems = sqliteTable('order_items', {

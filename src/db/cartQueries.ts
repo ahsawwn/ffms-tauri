@@ -20,6 +20,7 @@ export async function holdCart(input: any) {
     totalAmount: input.totalAmount,
     paymentMethod: null,
     status: 'HELD',
+    createdAt: new Date().toISOString(),
   });
   for (const item of input.items) {
     await db.insert(orderItems).values({

@@ -70,8 +70,12 @@ async function initializeTables(db: Database) {
     'ALTER TABLE receipt_settings ADD COLUMN kitchen_pin TEXT DEFAULT "1234";',
     'ALTER TABLE receipt_settings ADD COLUMN mobile_kitchen_url TEXT DEFAULT "";',
     'ALTER TABLE receipt_settings ADD COLUMN raast TEXT;',
+    'ALTER TABLE receipt_settings ADD COLUMN logo_url TEXT;',
   ];
   for (const sql of alters) { try { await db.execute(sql); } catch (e) {} }
+  // Fix legacy rows where created_at was stored as the literal string 'CURRENT_TIMESTAMP'
+  try { await db.execute("UPDATE orders SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = 'CURRENT_TIMESTAMP';"); } catch (e) {}
+  try { await db.execute("UPDATE kitchen_history SET created_at = datetime('now') WHERE created_at IS NULL OR created_at = 'CURRENT_TIMESTAMP';"); } catch (e) {}
   // Migrate legacy users role CHECK constraint if needed
   try {
     const urows: any[] = await db.select('SELECT sql FROM sqlite_master WHERE type="table" AND name="users"');

@@ -73,6 +73,7 @@ export async function submitOrder(input: {
     totalAmount: input.totalAmount,
     paymentMethod: input.paymentMethod,
     status: 'COMPLETED',
+    createdAt: new Date().toISOString(),
   });
   for (const item of input.items) {
     await db.insert(orderItems).values({
