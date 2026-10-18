@@ -14,7 +14,6 @@ fn list_printers() -> Vec<String> {
     if let Ok(o) = Command::new("lpstat").arg("-p").output() {
         let text = String::from_utf8_lossy(&o.stdout);
         for line in text.lines() {
-            // "printer NAME is idle."
             let parts: Vec<&str> = line.split_whitespace().collect();
             if parts.len() >= 2 && parts[0] == "printer" {
                 out.push(parts[1].to_string());
@@ -24,17 +23,7 @@ fn list_printers() -> Vec<String> {
     out
 }
 
-#[tauri::command]
-fn print_html(html: String, printer: Option<String>) -> PrintResult {
-    // Write HTML to a temp file.
-    let dir = std::env::temp_dir();
-    let html_path = dir.join("nerve_receipt.html");
-    let pdf_path = dir.join("nerve_receipt.pdf");
-    if let Err(e) = fs::write(&html_path, html.as_bytes()) {
-        return PrintResult { ok: false, message: format!("write html failed: {}", e) };
-    }
-
-    // Convert HTML to PDF using headless Chrome (preserves styling).
+fn run_chrome(html_path: &std::path::Path, pdf_path: &std::path::Path) -> Result<(), String> {
     let chrome = if std::path::Path::new("/usr/bin/google-chrome").exists() {
         "/usr/bin/google-chrome"
     } else if std::path::Path::new("/usr/bin/chromium").exists() {
@@ -44,8 +33,7 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
     } else {
         "google-chrome"
     };
-
-    let chrome_res = Command::new(chrome)
+    let o = Command::new(chrome)
         .args([
             "--headless",
             "--disable-gpu",
@@ -55,29 +43,85 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
             &format!("--print-to-pdf={}", pdf_path.display()),
             html_path.to_str().unwrap_or(""),
         ])
-        .output();
+        .output()
+        .map_err(|e| format!("chrome spawn failed: {}", e))?;
+    if !o.status.success() || !pdf_path.exists() {
+        let err = String::from_utf8_lossy(&o.stderr);
+        return Err(format!("chrome pdf failed: {}", err));
+    }
+    Ok(())
+}
 
-    match chrome_res {
-        Ok(o) if o.status.success() && pdf_path.exists() => {}
-        Ok(o) => {
-            let err = String::from_utf8_lossy(&o.stderr);
-            return PrintResult { ok: false, message: format!("chrome pdf failed: {}", err) };
-        }
-        Err(e) => {
-            return PrintResult { ok: false, message: format!("chrome spawn failed: {}", e) };
+fn content_height_mm(pdf_path: &std::path::Path) -> Option<f64> {
+    // Use gs bbox to get content height in points, convert to mm.
+    let o = Command::new("gs")
+        .args(["-sDEVICE=bbox", "-dBATCH", "-dNOPAUSE", pdf_path.to_str().unwrap_or("")])
+        .output()
+        .ok()?;
+    let text = String::from_utf8_lossy(&o.stderr);
+    for line in text.lines() {
+        if line.starts_with("%%HiResBoundingBox:") {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            // HiResBoundingBox: x1 y1 x2 y2
+            if parts.len() >= 5 {
+                let y1: f64 = parts[2].parse().ok()?;
+                let y2: f64 = parts[4].parse().ok()?;
+                let h_pt = (y2 - y1).max(1.0);
+                // pts -> mm (1pt = 0.352778mm), add 4mm padding
+                return Some(h_pt * 0.352778 + 4.0);
+            }
         }
     }
+    None
+}
 
-    // Print the PDF via CUPS if a printer is specified.
+#[tauri::command]
+fn print_html(html: String, printer: Option<String>) -> PrintResult {
+    let dir = std::env::temp_dir();
+    let html_path = dir.join("nerve_receipt.html");
+    let pdf_path = dir.join("nerve_receipt.pdf");
+    let pdf_path2 = dir.join("nerve_receipt2.pdf");
+
+    // First pass: tall page to measure content.
+    let html_tall = html.replace("size: 80mm auto;", "size: 80mm 297mm;");
+    if html_tall == html {
+        // fallback: try replacing any size
+        let _ = ();
+    }
+    if let Err(e) = fs::write(&html_path, html_tall.as_bytes()) {
+        return PrintResult { ok: false, message: format!("write html failed: {}", e) };
+    }
+    if let Err(e) = run_chrome(&html_path, &pdf_path) {
+        return PrintResult { ok: false, message: e };
+    }
+
+    // Measure content height.
+    let h_mm = content_height_mm(&pdf_path).unwrap_or(297.0).min(297.0).max(20.0);
+
+    // Second pass: exact height to avoid trailing blank paper.
+    let html_exact = html.replace("size: 80mm auto;", &format!("size: 80mm {}mm;", h_mm as i32));
+    let html_exact = if html_exact == html {
+        html.replace("80mm auto", &format!("80mm {}mm", h_mm as i32))
+    } else { html_exact };
+    if let Err(e) = fs::write(&html_path, html_exact.as_bytes()) {
+        return PrintResult { ok: false, message: format!("write html2 failed: {}", e) };
+    }
+    if run_chrome(&html_path, &pdf_path2).is_err() {
+        // fallback to first pdf
+        let _ = fs::copy(&pdf_path, &pdf_path2);
+    }
+
+    // Print via CUPS if printer specified.
     if let Some(p) = printer {
         if !p.trim().is_empty() {
             let lp_res = Command::new("lp")
-                .args(["-d", p.trim(), pdf_path.to_str().unwrap_or("")])
+                .args(["-d", p.trim(), pdf_path2.to_str().unwrap_or("")])
                 .output();
             match lp_res {
                 Ok(o) if o.status.success() => {
                     let _ = fs::remove_file(&html_path);
                     let _ = fs::remove_file(&pdf_path);
+                    let _ = fs::remove_file(&pdf_path2);
                     return PrintResult { ok: true, message: format!("printed to {}", p) };
                 }
                 Ok(o) => {
@@ -91,9 +135,8 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
         }
     }
 
-    // No printer specified: leave PDF for user; report path.
     let _ = fs::remove_file(&html_path);
-    PrintResult { ok: true, message: format!("pdf saved: {}", pdf_path.display()) }
+    PrintResult { ok: true, message: format!("pdf saved: {}", pdf_path2.display()) }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
