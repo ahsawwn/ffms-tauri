@@ -134,7 +134,7 @@ export const orders = sqliteTable('orders', {
   customerPhone: text('customer_phone'),
   deliveryAddress: text('delivery_address'),
   totalAmount: real('total_amount').notNull(),
-  paymentMethod: text('payment_method', { enum: ['CASH', 'CARD', 'ONLINE'] }),
+  paymentMethod: text('payment_method', { enum: ['CASH', 'CARD', 'ONLINE', 'RAAST'] }),
   status: text('status').default('PENDING'),
   kitchenStatus: text('kitchen_status').default('NEW'),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),

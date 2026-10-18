@@ -19,16 +19,17 @@ export interface ReceiptData {
 
 function PRINT_CSS(width: string): string {
   return '<style>'
-    + '@page { size: ' + width + ' auto; margin: 0; }'
+    + '@page { size: ' + width + ' auto; margin: 0mm; }'
     + '* { box-sizing: border-box; }'
-    + 'body { font-family: monospace, monospace; font-size: 12px; line-height: 1.25; color: #000; margin: 0; padding: 6px; }'
-    + '.receipt { width: ' + width + '; min-width: ' + width + '; max-width: ' + width + '; margin: 0 auto; }'
+    + 'html, body { margin: 0; padding: 0; height: auto; overflow: hidden; }'
+    + 'body { font-family: monospace, monospace; font-size: 12px; line-height: 1.2; color: #000; padding: 4px 6px 2px 6px; }'
+    + '.receipt { width: ' + width + '; min-width: ' + width + '; max-width: ' + width + '; margin: 0 auto; page-break-after: avoid; page-break-inside: avoid; }'
     + '.center { text-align: center; }'
     + '.bold { font-weight: 900; text-transform: uppercase; }'
-    + '.dash { border-top: 1px dashed #000; margin: 6px 0; }'
-    + '.row { display: flex; justify-content: space-between; margin: 2px 0; }'
-    + '.row.total { font-weight: 900; border-top: 1px dashed #000; padding-top: 4px; margin-top: 6px; }'
-    + '.cut { margin-top: 8px; text-align: center; font-size: 10px; }'
+    + '.dash { border-top: 1px dashed #000; margin: 4px 0; }'
+    + '.row { display: flex; justify-content: space-between; margin: 1px 0; }'
+    + '.row.total { font-weight: 900; border-top: 1px dashed #000; padding-top: 3px; margin-top: 4px; }'
+    + '.cut { margin-top: 4px; text-align: center; font-size: 10px; }'
     + '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .no-print { display: none !important; } }'
     + '</style>';
 }
@@ -69,6 +70,7 @@ function renderReceiptHtml(data: ReceiptData): string {
     + '<div class="row total"><span>Total</span><span>' + data.total.toFixed(0) + '</span></div>'
     + '<div class="row"><span>Cash</span><span>' + data.cashReceived.toFixed(0) + '</span></div>'
     + '<div class="row"><span>Change</span><span>' + data.change.toFixed(0) + '</span></div>'
+    + (s.raastQrDataUrl ? '<div class="dash"></div><div class="center" style="font-size:10px;font-weight:900">PAY VIA RAAST</div><div class="center"><img src="' + s.raastQrDataUrl + '" alt="raast qr" style="width:40mm;height:40mm;margin:4px auto;display:block" /></div><div class="center" style="font-size:9px">' + (s.raast?.accountTitle ?? '') + '</div><div class="center" style="font-size:9px">' + (s.raast?.iban ?? '') + '</div>' : '')
     + '<div class="dash"></div>'
     + '<div class="center" style="font-size:10px">' + (s.footerMessage ?? 'Thank you for dining with us!') + '</div>'
     + '<div class="cut">|||| |||| ||||</div>'

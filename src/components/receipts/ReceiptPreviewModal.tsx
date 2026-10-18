@@ -16,8 +16,17 @@ export const ReceiptPreviewModal: React.FC<ReceiptPreviewModalProps> = ({ open, 
   const { printReceipt, printKot, renderReceiptHtml, renderKotHtml } = useThermalPrinter();
   if (!open || !data) return null;
 
-  const handlePrint = () => {
-    const styled = renderReceiptHtml(data);
+  const handlePrint = async () => {
+    const printData = { ...data };
+    if (data.settings?.raast?.raastOnReceipt && data.settings?.raast?.iban && data.settings?.raast?.accountTitle) {
+      try {
+        const QRCode = (await import('qrcode')) as any;
+        const payload = 'RAAST\nIBAN: ' + data.settings.raast.iban + '\nTitle: ' + data.settings.raast.accountTitle + '\nAmount: ' + data.total.toFixed(2);
+        const qrUrl = await QRCode.toDataURL(payload, { width: 200, margin: 1 });
+        printData.settings = { ...data.settings, raastQrDataUrl: qrUrl };
+      } catch (e) { console.error('raast qr gen failed', e); }
+    }
+    const styled = renderReceiptHtml(printData);
     const win = window.open('', '_blank', 'width=360,height=640,noopener=yes');
     if (win) {
       try {

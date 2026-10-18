@@ -43,6 +43,14 @@ export const InvoicesView: React.FC = () => {
     const its = await fetchOrderItems(o.id);
     const rItems = its.map((it: any) => ({ name: products[it.productId] ?? it.productId, quantity: it.quantity, unitPrice: it.unitPrice, note: '' }));
     const subtotal = rItems.reduce((s: number, i: any) => s + i.unitPrice * i.quantity, 0);
+    const printSettings = { ...settings };
+    if (settings?.raast?.raastOnReceipt && settings?.raast?.iban && settings?.raast?.accountTitle) {
+      try {
+        const QRCode = (await import('qrcode')) as any;
+        const payload = 'RAAST\nIBAN: ' + settings.raast.iban + '\nTitle: ' + settings.raast.accountTitle + '\nAmount: ' + Number(o.totalAmount).toFixed(2);
+        printSettings.raastQrDataUrl = await QRCode.toDataURL(payload, { width: 200, margin: 1 });
+      } catch (e) { console.error('raast qr gen failed', e); }
+    }
     setReceipt({
       orderNumber: o.orderNumber,
       orderType: o.orderType,
@@ -54,7 +62,7 @@ export const InvoicesView: React.FC = () => {
       cashReceived: o.totalAmount,
       change: 0,
       cashier: users[o.userId] ?? o.userId,
-      settings,
+      settings: printSettings,
       tableNumber: o.tableNumber,
       customerName: o.customerName,
     });
@@ -71,7 +79,7 @@ export const InvoicesView: React.FC = () => {
       <div className="flex gap-2 flex-wrap">
         <input className="brutal-input flex-1 min-w-[160px]" placeholder="Search order #" value={search} onChange={(e) => setSearch(e.target.value)} />
         <select className="brutal-input" value={status} onChange={(e) => setStatus(e.target.value)}><option value="">All Status</option><option value="COMPLETED">Completed</option><option value="PENDING">Pending</option><option value="CANCELLED">Cancelled</option></select>
-        <select className="brutal-input" value={payment} onChange={(e) => setPayment(e.target.value)}><option value="">All Payments</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="ONLINE">Online</option></select>
+        <select className="brutal-input" value={payment} onChange={(e) => setPayment(e.target.value)}><option value="">All Payments</option><option value="CASH">Cash</option><option value="CARD">Card</option><option value="ONLINE">Online</option><option value="RAAST">Raast</option></select>
         <select className="brutal-input" value={type} onChange={(e) => setType(e.target.value)}><option value="">All Types</option><option value="DINE_IN">Dine In</option><option value="TAKEAWAY">Takeaway</option><option value="DELIVERY">Delivery</option></select>
       </div>
       <div className="flex gap-2 flex-wrap">

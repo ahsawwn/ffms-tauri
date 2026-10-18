@@ -48,7 +48,7 @@ export async function fetchAddons() {
 export async function submitOrder(input: {
   userId: string;
   orderType: 'DINE_IN' | 'TAKEAWAY' | 'PICKUP' | 'DELIVERY';
-  paymentMethod: 'CASH' | 'CARD' | 'ONLINE';
+  paymentMethod: 'CASH' | 'CARD' | 'ONLINE' | 'RAAST';
   items: { productId: string; quantity: number; unitPrice: number; variantId?: string; variantName?: string; addons?: any[] }[];
   totalAmount: number;
   tableNumber?: string;

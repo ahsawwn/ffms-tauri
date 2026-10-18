@@ -80,7 +80,7 @@ export function usePosTerminal() {
   const tax = subtotal * taxRate;
   const service = metadata.serviceCharge ? subtotal * 0.1 : 0;
   const total = Math.max(0, subtotal + tax + service - discount);
-  const confirmPayment = async (method: 'CASH' | 'CARD' | 'ONLINE', cash: number) => {
+  const confirmPayment = async (method: 'CASH' | 'CARD' | 'ONLINE' | 'RAAST', cash: number) => {
     if (!user) return;
     const tbls = await fetchTables();
     const tbl = tbls.find((t:any) => t.name === metadata.tableNumber);

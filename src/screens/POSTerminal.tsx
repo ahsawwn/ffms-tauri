@@ -40,7 +40,7 @@ export const POSTerminal: React.FC = () => {
           onTaxToggle={() => h.setTaxRate((t: number) => (t === 0.05 ? 0.16 : 0.05))} discount={h.discount} onDiscount={h.setDiscount}
           onCheckout={() => h.setPayOpen(true)} onClear={() => { void (async () => { const tbls = await fetchTables(); const tbl = tbls.find((t:any) => t.name === h.metadata.tableNumber); if (tbl && !tbl.currentOrderId) await freeTable(tbl.id); h.setCart([]); })(); }} onHold={handleHold} onRecall={() => { loadHeld(); setHeldOpen(true); }} orderType={h.orderType} setOrderType={h.setOrderType} metadata={h.metadata} setMetadata={h.setMetadata} tables={tables} />
       </div>
-      <PaymentModal open={h.payOpen} total={h.total} onClose={() => h.setPayOpen(false)} onConfirm={h.confirmPayment} />
+      <PaymentModal open={h.payOpen} total={h.total} settings={h.settings} onClose={() => h.setPayOpen(false)} onConfirm={h.confirmPayment} />
       <VariantSelectorModal open={!!h.variantProduct} product={h.variantProduct} variants={h.variants} addons={h.addons} onClose={() => h.setVariantProduct(null)} onConfirm={(v, a) => { if (h.variantProduct) h.addToCartBase(h.variantProduct, v, a); h.setVariantProduct(null); }} />
       <CustomProductModal open={h.customOpen} onClose={() => h.setCustomOpen(false)} onAdd={(item) => h.setCart((prev: any) => [...prev, { productId: crypto.randomUUID(), name: item.name, price: item.price, quantity: item.quantity, note: '' }])} />
       <ReceiptPreviewModal open={!!h.receipt} data={h.receipt} onClose={() => h.setReceipt(null)} />
