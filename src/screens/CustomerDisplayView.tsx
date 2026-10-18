@@ -9,17 +9,24 @@ export const CustomerDisplayView: React.FC = () => {
 
   useEffect(() => {
     const bc = (typeof BroadcastChannel !== 'undefined') ? new BroadcastChannel(CHANNEL) : null;
-    const handler = (e: MessageEvent) => setState(e.data ?? { status: 'idle', items: [] });
+    const handler = (e: MessageEvent) => { if (e.data) setState(e.data); };
     if (bc) bc.onmessage = handler;
-    const storageHandler = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        try { setState(JSON.parse(e.newValue)); } catch {}
-      }
+    const readState = () => {
+      try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) setState(JSON.parse(raw)); } catch {}
     };
+    const storageHandler = (e: StorageEvent) => { if (e.key === STORAGE_KEY && e.newValue) { try { setState(JSON.parse(e.newValue)); } catch {} } };
     window.addEventListener('storage', storageHandler);
-    // initial
-    try { const raw = localStorage.getItem(STORAGE_KEY); if (raw) setState(JSON.parse(raw)); } catch {}
-    return () => { if (bc) bc.close(); window.removeEventListener('storage', storageHandler); };
+    readState();
+    const t = setInterval(readState, 500);
+    // Tauri cross-window event listener
+    let unlisten: any = null;
+    const isTauri = typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__;
+    if (isTauri) {
+      import('@tauri-apps/api/event').then((m: any) => {
+        m.listen('customer-display-update', (e: any) => { if (e?.payload) setState(e.payload); }).then((u: any) => { unlisten = u; });
+      }).catch(() => {});
+    }
+    return () => { if (bc) bc.close(); window.removeEventListener('storage', storageHandler); clearInterval(t); if (unlisten) unlisten(); };
   }, []);
 
   const items = state.items ?? [];

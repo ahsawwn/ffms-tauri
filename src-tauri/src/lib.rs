@@ -50,6 +50,8 @@ fn print_html(html: String, printer: Option<String>) -> PrintResult {
             "--headless",
             "--disable-gpu",
             "--no-sandbox",
+            "--no-pdf-header-footer",
+            "--window-size=320,320",
             &format!("--print-to-pdf={}", pdf_path.display()),
             html_path.to_str().unwrap_or(""),
         ])

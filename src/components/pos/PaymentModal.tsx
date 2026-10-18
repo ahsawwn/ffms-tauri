@@ -63,15 +63,27 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ open, total, setting
   const handlePrintRaast = async () => {
     const w = window.open('', '_blank', 'width=360,height=480,noopener=yes');
     if (!w) return;
-    const qrImg = raastQrUrl || '';
-    w.document.write('<html><head><style>body{font-family:monospace;text-align:center;padding:20px;} .qr{margin:20px auto;}</style></head><body>'
+    // Generate QR on click to ensure it's available
+    let qrImg = raastQrUrl || '';
+    if (!qrImg && iban && accountTitle) {
+      try {
+        const m = (await import('sendkardo-qr')) as any;
+        qrImg = await m.createRaastQrDataUrl({ iban, amount: total }, { width: 220, margin: 1 });
+        setRaastQrUrl(qrImg);
+      } catch (e) { console.error('raast qr gen failed', e); }
+    }
+    w.document.write('<html><head><style>'
+      + '@page { size: 80mm auto; margin: 0; }'
+      + 'body{font-family:monospace;text-align:center;padding:10px;margin:0;}'
+      + 'img{width:200px;height:200px;margin:10px auto;display:block;}'
+      + '</style></head><body>'
       + '<h2>Raast Payment</h2>'
       + '<p><strong>' + accountTitle + '</strong></p>'
       + '<p>IBAN: ' + iban + '</p>'
       + '<p>Amount: PKR ' + total.toFixed(0) + '</p>'
-      + (qrImg ? '<img src="' + qrImg + '" style="width:220px;height:220px;margin:12px auto;display:block" />' : '')
+      + (qrImg ? '<img src="' + qrImg + '" />' : '<p>Generating QR...</p>')
       + '<p>Scan to pay via Raast</p>'
-      + '<script>setTimeout(function(){window.print();},500);setTimeout(function(){try{window.close();}catch(e){}},1500);</script>'
+      + '<script>setTimeout(function(){window.print();},800);setTimeout(function(){try{window.close();}catch(e){}},1800);</script>'
       + '</body></html>');
     w.document.close();
     w.focus();
