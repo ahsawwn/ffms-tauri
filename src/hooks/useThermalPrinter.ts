@@ -21,17 +21,20 @@ function PRINT_CSS(width: string): string {
   return '<style>'
     + '@page { margin: 0mm; }'
     + '* { box-sizing: border-box; }'
-    + 'html, body { margin: 0; padding: 0; height: auto; overflow: visible; orphans: 0; widows: 0; }'
-    + 'body { font-family: monospace, monospace; font-size: 12px; line-height: 1.2; color: #000; padding: 2px 0 2px 0; margin: 0; }'
-    + '.receipt { width: 100%; max-width: ' + width + '; margin: 0 auto; padding: 0 4px; page-break-after: avoid; page-break-inside: avoid; box-sizing: border-box; }'
+    + 'html, body { margin: 0; padding: 0; height: auto; overflow: hidden; orphans: 0; widows: 0; }'
+    + 'body { font-family: "Courier New", Courier, monospace; font-size: 11px; line-height: 1.15; color: #000; padding: 1mm 2mm; margin: 0; }'
+    + '.receipt { width: 100%; max-width: ' + width + '; margin: 0 auto; page-break-after: avoid; page-break-inside: avoid; }'
     + '.center { text-align: center; }'
-    + '.row { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; margin: 1px 0; }'
+    + '.bold { font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }'
+    + '.dash { border-top: 1px dashed #000; margin: 3px 0; }'
+    + '.ddash { border-top: 2px solid #000; margin: 3px 0; }'
+    + '.row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; margin: 1px 0; }'
     + '.row > span:first-child { flex: 1 1 auto; min-width: 0; word-break: break-word; }'
-    + '.row > span:last-child { flex: 0 0 auto; text-align: right; white-space: nowrap; }'
-    + '.bold { font-weight: 900; text-transform: uppercase; }'
-    + '.dash { border-top: 1px dashed #000; margin: 4px 0; }'
-    + '.row.total { font-weight: 900; border-top: 1px dashed #000; padding-top: 3px; margin-top: 4px; }'
-    + '.cut { margin-top: 4px; text-align: center; font-size: 10px; page-break-after: avoid; }'
+    + '.row > span:last-child { flex: 0 0 auto; text-align: right; white-space: nowrap; padding-left: 4px; }'
+    + '.row.total { font-weight: 700; border-top: 1px dashed #000; padding-top: 2px; margin-top: 3px; }'
+    + '.item { margin: 1px 0; }'
+    + '.cut { margin-top: 3px; text-align: center; font-size: 9px; letter-spacing: 2px; page-break-after: avoid; }'
+    + '.logo { max-width: 50%; max-height: 40px; margin: 0 auto 2px auto; display: block; }'
     + '@media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .no-print { display: none !important; } }'
     + '</style>';
 }
@@ -43,11 +46,11 @@ function renderReceiptHtml(data: ReceiptData): string {
     return '<div class="row"><span>' + it.quantity + 'x ' + it.name + note + '</span><span>' + (it.quantity * it.unitPrice).toFixed(0) + '</span></div>';
   }).join('');
   const logoHtml = (s.showLogo && s.logoUrl)
-    ? '<div class="center" style="margin-bottom:6px"><img src="' + s.logoUrl + '" alt="logo" style="max-width:60%;max-height:60px;margin:0 auto;display:block" /></div>'
+    ? '<div class="center"><img src="' + s.logoUrl + '" alt="logo" class="logo" /></div>'
     : '';
   const nameHtml = (s.showLogo && !s.logoUrl)
-    ? '<div class="center bold" style="font-size:18px">' + (s.restaurantName ?? 'Nerve Fast Food') + '</div>'
-    : (s.showLogo && s.logoUrl ? '<div class="center bold" style="font-size:16px;margin-top:4px">' + (s.restaurantName ?? 'Nerve Fast Food') + '</div>' : '');
+    ? '<div class="center bold" style="font-size:16px">' + (s.restaurantName ?? 'Nerve Fast Food') + '</div>'
+    : (s.showLogo && s.logoUrl ? '<div class="center bold" style="font-size:14px">' + (s.restaurantName ?? 'Nerve Fast Food') + '</div>' : '');
   const width = s.printerWidth === '58mm' ? '58mm' : '80mm';
   const tableRow = data.tableNumber ? '<div class="row"><span>Table:</span><span>' + data.tableNumber + '</span></div>' : '';
   return '<html><head>' + PRINT_CSS(width) + '</head><body>'
@@ -83,15 +86,15 @@ function renderReceiptHtml(data: ReceiptData): string {
 function renderKotHtml(data: ReceiptData): string {
   const items = data.items.map(function (it) {
     const note = it.note ? ' (' + it.note + ')' : '';
-    return '<div style="font-size:18px; font-weight:900; text-transform:uppercase; margin:4px 0;">' + it.quantity + 'x ' + it.name + note + '</div>';
+    return '<div class="bold" style="font-size:15px; margin:2px 0;">' + it.quantity + 'x ' + it.name + note + '</div>';
   }).join('');
   const width = data.settings?.printerWidth === '58mm' ? '58mm' : '80mm';
-  const tableRow = data.tableNumber ? '<div class="center" style="font-size:14px">Table: ' + data.tableNumber + '</div>' : '';
-  const nameRow = data.customerName ? '<div class="center" style="font-size:14px">Name: ' + data.customerName + '</div>' : '';
+  const tableRow = data.tableNumber ? '<div class="center bold" style="font-size:13px">Table: ' + data.tableNumber + '</div>' : '';
+  const nameRow = data.customerName ? '<div class="center" style="font-size:12px">Name: ' + data.customerName + '</div>' : '';
   return '<html><head>' + PRINT_CSS(width) + '</head><body>'
     + '<div class="receipt">'
-    + '<div class="center bold" style="font-size:22px">*** KOT ***</div>'
-    + '<div class="center bold" style="font-size:16px">' + data.orderType + '</div>'
+    + '<div class="center bold" style="font-size:20px">*** KOT ***</div>'
+    + '<div class="center bold" style="font-size:14px">' + data.orderType + '</div>'
     + tableRow
     + nameRow
     + '<div class="dash"></div>'
